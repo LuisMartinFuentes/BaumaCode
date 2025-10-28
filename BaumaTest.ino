@@ -16,6 +16,9 @@ Adafruit_ST7796S tft = Adafruit_ST7796S(TFT_CS, TFT_DC, TFT_RST);
 #define IN1          19
 #define IN2          27
 #define VALVULA_PIN  12   // HIGH = válvula cerrada (inflar), LOW = abierta (deflar)
+int canalPWM = 0;
+int frecuencia = 5000;
+int resolucion = 8;
 
 // ------------------ Parámetros ------------------
 #define PRESION_MAX 140.0
@@ -202,6 +205,9 @@ void setup() {
   Serial.begin(115200);
   Wire.begin(21, 22);
 
+  ledcSetup(canalPWM, frecuencia, resolucion);
+  ledcAttachPin(pwmPin, canalPWM);
+
   // TFT
   pinMode(TFT_BL, OUTPUT);
   digitalWrite(TFT_BL, HIGH);
@@ -270,7 +276,9 @@ void loop() {
       motorEncendido = false;
 
       delay(1000);
-      digitalWrite(VALVULA_PIN, LOW); // abre válvula para desinflar
+      int valor = 160;  // abre válvula parcialmente
+      ledcWrite(canalPWM, valor);
+      Serial.println("Válvula abierta (PWM activo)");
 
       muestraIndex = 0;
       tiempoInicioCaptura = micros();
@@ -291,10 +299,17 @@ void loop() {
       }
     } else if (capturando) {
       // Fin medición
-      capturando = false;
-      digitalWrite(VALVULA_PIN, HIGH); // cierra válvula primero para concluir
-      delay(150);                      // pequeño respiro
-      digitalWrite(VALVULA_PIN, LOW);  // y la dejas en LOW como pediste (NO desenergizada/abierta)
+  
+      //Cierra válvula completamente primero
+      ledcWrite(canalPWM, 255);  
+      Serial.println("Válvula cerrada (PWM = 255)");
+
+      //Espera breve
+      delay(150);
+
+      //Deja la válvula abierta o sin energía
+      ledcWrite(canalPWM, 0);
+      Serial.println("Válvula abierta (PWM = 0)");
 
       int cantidadPicos = 0;
       int* picosOrdenados = obtenerPicosOrdenados(cantidadPicos);
